@@ -1,0 +1,9 @@
+{
+  "_notes": [
+    "Hand overrides, applied last. Use for resorts with no scrapable status, or road closures.",
+    "Resort keys: open (true/false), liftsOpen, liftsTotal, terrainPct, groomersOnly (true/false), note.",
+    "Touring keys: roadClosed (true/false), note. Example: set jakes.roadClosed=true when CA-89 at Emerald Bay is gated.",
+    "Delete a key (or the whole entry) to go back to scraped data."
+  ],
+  "overrides": {}
+}
