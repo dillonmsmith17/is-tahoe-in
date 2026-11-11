@@ -87,51 +87,44 @@ export function fetchAlterraFeed(slug) {
 }
 
 const LIFT_OPEN = new Set(["open", "open_ski_ride_school_only"]);
-const LIFT_HOLD = /hold|delayed|closure$/;
+const LIFT_HOLD = /hold|delayed|^(wind|weather|lightning)_closure$/;
 const TRAIL_OPEN = new Set(["open"]);
-const SIDE_RX = { alpine: /alpine/i, olympic: /^(?!.*alpine)/i };
-
-// Pick the part of the feed for one side of a two-sided resort: a separate Resort entry if the feed
-// has one, otherwise the MountainAreas whose names match. Falls back to the whole resort, flagged.
-export function alterraSide(feed, side) {
+// Keep only the mountain areas listed for this tile (e.g. Alpine = Summit, Scott/Lakeview, Sherwood).
+// With no list, use the whole resort.
+export function alterraAreas(feed, names) {
   const resorts = feed?.Resorts || [];
   if (!resorts.length) throw new Error("MtnPowder feed has no Resorts");
-  const rx = side ? SIDE_RX[side] : null;
-  if (rx && resorts.length > 1) {
-    const r = resorts.find(x => side === "alpine" ? rx.test(x.Name) : !/alpine/i.test(x.Name));
-    if (r) return { areas: r.MountainAreas || [], split: "resort" };
-  }
-  const areas = resorts.flatMap(r => r.MountainAreas || []);
-  if (rx) {
-    const mine = areas.filter(a => side === "alpine" ? /alpine/i.test(a.Name) : !/alpine/i.test(a.Name));
-    if (mine.length && mine.length < areas.length) return { areas: mine, split: "area" };
-  }
-  return { areas, split: "none" };
+  const all = resorts.flatMap(r => r.MountainAreas || []);
+  if (!names?.length) return { areas: all, unmapped: [] };
+  const want = new Set(names.map(n => n.toLowerCase()));
+  const areas = all.filter(a => want.has(String(a.Name).toLowerCase()));
+  if (!areas.length) throw new Error(`none of the configured areas are in the feed (feed has: ${all.map(a => a.Name).join(", ")})`);
+  return { areas, unmapped: all.filter(a => (a.Lifts || []).length && !areas.includes(a)).map(a => a.Name) };
 }
 
-export function parseAlterra(feed, side) {
-  const { areas, split } = alterraSide(feed, side);
+export function parseAlterra(feed, areaNames) {
+  const { areas } = alterraAreas(feed, areaNames);
   const lifts = areas.flatMap(a => a.Lifts || []);
   const trails = areas.flatMap(a => a.Trails || []);
   if (!lifts.length) return { liftsOpen: null, liftsTotal: 0, terrainPct: null, groomersOnly: null, source: "MtnPowder (no lifts listed yet)" };
   const st = l => String(l.StatusEnglish || l.Status || "").toLowerCase();
-  const openL = lifts.filter(l => LIFT_OPEN.has(st(l)) || /^open$/i.test(l.StatusIcon || ""));
+  const openL = lifts.filter(l => LIFT_OPEN.has(st(l)));
   const holdL = lifts.filter(l => LIFT_HOLD.test(st(l)));
-  const openT = trails.filter(t => TRAIL_OPEN.has(st(t)) || /^open$/i.test(t.StatusIcon || ""));
-  const groomed = t => t.Grooming === true || /groom/i.test(String(t.Grooming ?? t.GroomingStatus ?? t.GroomingEnglish ?? ""));
+  const openT = trails.filter(t => TRAIL_OPEN.has(st(t)));
+  const groomed = t => /^(yes|groomed|true)$/i.test(String(t.Grooming ?? ""));
   return {
     liftsOpen: openL.length, liftsHold: holdL.length, liftsTotal: lifts.length,
     trailsOpen: trails.length ? openT.length : null, trailsTotal: trails.length || null,
     terrainPct: trails.length ? Math.round(100 * openT.length / trails.length) : null,
-    groomersOnly: openT.length && openT.some(t => "Grooming" in t || "GroomingStatus" in t) ? openT.every(groomed) : null,
+    groomersOnly: openT.length ? openT.every(groomed) : null,
     lifts: Object.fromEntries(lifts.map(l => [l.Name, st(l) || "unknown"])),
-    source: split === "none" && side ? "MtnPowder (whole resort; sides not split)" : "MtnPowder"
+    source: "Palisades Tahoe (MtnPowder)"
   };
 }
 
 const ADAPTERS = {
   vail: async loc => parseVail(await get(loc.statusUrl, { type: "html" })),
-  alterra: async loc => parseAlterra(await fetchAlterraFeed(loc.alterra.slug), loc.alterra.side)
+  alterra: async loc => parseAlterra(await fetchAlterraFeed(loc.alterra.slug), loc.alterra.areas)
 };
 
 /* ---------- Combine ---------- */

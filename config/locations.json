@@ -3,7 +3,7 @@
     "Coordinates and elevations are approximate summit/upper-mountain points; Open-Meteo is called with the summit elevation so temps and snow are downscaled to it.",
     "trailhead = approx starting elevation for tours. core = [lo, hi] ft where most of the skiing happens; defaults to 25-85% of resort vertical or 30-100% of a tour's vertical.",
     "routes = approach roads checked for chain controls/closures. skinTrack = 'sheltered' or 'exposed' (starting guesses, tune these).",
-    "operator + adapter config: vail uses statusUrl; alterra uses alterra.slug (v4.mtnfeed.com/resorts/<slug>.json) and alterra.side to split a two-sided resort."
+    "operator + adapter config: vail uses statusUrl; alterra uses alterra.slug (v4.mtnfeed.com/resorts/<slug>.json) and alterra.areas, the MtnPowder mountain areas that make up this tile (Palisades splits Olympic Valley and Alpine this way)."
   ],
   "regions": [
     {
@@ -107,7 +107,15 @@
       ],
       "alterra": {
         "slug": "palisades-tahoe",
-        "side": "olympic"
+        "areas": [
+          "Palisades Peak",
+          "Emigrant Peak",
+          "High Camp",
+          "Granite Peak",
+          "Snow King Peak",
+          "KT Peak",
+          "Terrain Parks"
+        ]
       }
     },
     {
@@ -127,7 +135,11 @@
       ],
       "alterra": {
         "slug": "palisades-tahoe",
-        "side": "alpine"
+        "areas": [
+          "Summit Peak",
+          "Scott/Lakeview Peak",
+          "Sherwood Bowl"
+        ]
       }
     },
     {

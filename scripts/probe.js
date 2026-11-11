@@ -5,7 +5,7 @@ import { get } from "../src/http.js";
 import { fetchWeather } from "../src/sources/openmeteo.js";
 import { fetchSnowDepth } from "../src/sources/snotel.js";
 import { fetchAvalanche } from "../src/sources/avalanche.js";
-import { parseVail, parseAlterra, fetchAlterraFeed } from "../src/sources/lifts.js";
+import { parseVail, parseAlterra, fetchAlterraFeed, alterraAreas } from "../src/sources/lifts.js";
 import { fetchAvalancheObs } from "../src/sources/avyobs.js";
 import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
 
@@ -56,7 +56,7 @@ try { const r = await fetchRoads(); const keys = Object.keys(r); ok(keys.length 
 console.log("Lift status");
 for (const l of locations.filter(x => x.kind === "resort")) {
   if (l.operator === "alterra" && l.alterra) {
-    try { const s = parseAlterra(await fetchAlterraFeed(l.alterra.slug), l.alterra.side); ok(`${l.name} (MtnPowder): ${s.liftsOpen ?? "?"}/${s.liftsTotal} lifts open, ${s.liftsHold ?? 0} on hold, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}, groomers only: ${s.groomersOnly}, ${s.source}`); }
+    try { const s = parseAlterra(await fetchAlterraFeed(l.alterra.slug), l.alterra.areas); ok(`${l.name} (MtnPowder): ${s.liftsOpen ?? "?"}/${s.liftsTotal} lifts open, ${s.liftsHold ?? 0} on hold, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}, groomers only: ${s.groomersOnly}, ${s.source}`); }
     catch (e) { bad(`${l.name} (MtnPowder): ${e.message}`); }
   }
   if (l.operator === "vail" && l.statusUrl) {
@@ -67,6 +67,18 @@ for (const l of locations.filter(x => x.kind === "resort")) {
 
 console.log("Resorts with no lift-status source yet");
 console.log("  " + locations.filter(x => x.kind === "resort" && !["vail", "alterra"].includes(x.operator)).map(x => x.name).join(", "));
+
+console.log("MtnPowder area mapping check");
+try {
+  const f = await fetchAlterraFeed("palisades-tahoe");
+  const mapped = locations.filter(x => x.alterra?.slug === "palisades-tahoe").flatMap(x => x.alterra.areas || []);
+  const { unmapped } = alterraAreas(f, mapped);
+  unmapped.length ? bad(`areas with lifts not assigned to either tile: ${unmapped.join(", ")}`) : ok("every area with lifts is assigned to Olympic Valley or Alpine");
+  for (const x of locations.filter(y => y.alterra)) {
+    const lifts = alterraAreas(f, x.alterra.areas).areas.flatMap(a => (a.Lifts || []).map(l => l.Name));
+    console.log(`    ${x.name}: ${lifts.join(", ")}`);
+  }
+} catch (e) { bad(e.message); }
 
 console.log("MtnPowder feed shape (palisades-tahoe)");
 try {
