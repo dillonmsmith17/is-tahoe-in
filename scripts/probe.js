@@ -39,6 +39,17 @@ for (const [label, url] of [["D3 chain controls", CC(3)], ["D10 chain controls",
   } catch (e) { bad(`${label}: ${e.message}`); }
 }
 
+console.log("Caltrans lane closures on our routes (shape check)");
+for (const d of [3, 10]) {
+  try {
+    const recs = items(await get(LCS(d), { retries: 0 }));
+    const ours = recs.filter(r => /"beginRoute"\s*:\s*"(I-80|US-50|SR-89|SR-88|SR-267|SR-28)"/.test(JSON.stringify(r)));
+    ok(`D${d}: ${ours.length} closure entries on Tahoe routes`);
+    const sample = ours.find(r => /full/i.test(JSON.stringify(r))) || ours[0];
+    if (sample) { const c = sample.lcs || sample; const { location, ...rest } = c; console.log(`    non-location fields: ${JSON.stringify(rest).slice(0, 1200)}`); }
+  } catch (e) { bad(`D${d}: ${e.message}`); }
+}
+
 console.log("Caltrans road status");
 try { const r = await fetchRoads(); const keys = Object.keys(r); ok(keys.length ? keys.map(k => `${k}: ${r[k].status}`).join(", ") : "feeds answered, no chain controls or closures right now"); } catch (e) { bad(e.message); }
 
