@@ -64,13 +64,15 @@ const majorFlag = d => (d.flags || []).find(f => f.kind === "avy") || (d.flags |
 function tile(d) {
   const t = d.tomorrow, flag = majorFlag(d);
   const fresh = d.overnight >= 1 ? { n: d.overnight, l: "overnight" } : { n: d.s72, l: "last 3 days" };
-  return `<button class="tile ${d.yes ? "yes" : "no"}" data-id="${d.id}" aria-label="${esc(d.name)}: today ${d.yes ? "yes" : "no"}${t ? `, ${dayName(t.date)} ${t.yes ? "yes" : "no"}` : ""}. ${Math.round(fresh.n)} inches ${fresh.l}.">
+  const tonight = t ? Math.round(t.overnight) : null;
+  return `<button class="tile ${d.yes ? "yes" : "no"}" data-id="${d.id}" aria-label="${esc(d.name)}: today ${d.yes ? "yes" : "no"}${t ? `, ${dayName(t.date)} ${t.yes ? "yes" : "no"}` : ""}. ${Math.round(fresh.n)} inches ${fresh.l}${tonight != null ? `, ${tonight} inches forecast tonight` : ""}.">
     <div class="name">${esc(d.name)}</div>
     <div class="verdict">${d.yes ? "YES" : "NO"}</div>
     <div class="meta">
       <span class="fresh"><b>${Math.round(fresh.n)}″</b> ${fresh.l}</span>
-      ${t ? `<span class="tmr">${esc(dayName(t.date).slice(0, 3))} <b class="${t.yes ? "y" : "n"}">${t.yes ? "YES" : "NO"}</b></span>` : ""}
+      ${tonight != null ? `<span class="fresh tonight${tonight >= 1 ? " on" : ""}"><b>${tonight}″</b> tonight</span>` : ""}
     </div>
+    ${t ? `<div class="tmr">${esc(dayName(t.date))} <b class="${t.yes ? "y" : "n"}">${t.yes ? "YES" : "NO"}</b></div>` : ""}
     ${flag ? `<div class="flags"><span class="flag ${flag.kind}">${esc(flag.text)}</span></div>` : ""}
   </button>`;
 }
