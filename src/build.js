@@ -13,15 +13,17 @@ const root = new URL("../", import.meta.url);
 const readJson = async p => JSON.parse(await readFile(new URL(p, root), "utf8"));
 
 export function assemble({ regions, locations, overrides = {}, weather, depths, avy, obs, roads, lifts, issues = [], todayIndex = TODAY_INDEX }) {
+  const noAdapter = [];
   const results = locations.map((loc, i) => {
     const st = depths?.[loc.snotel];
     const station = st ? { depth: st.depth, elev: st.elev ?? null, date: st.date, triplet: loc.snotel } : null;
     const L = lifts?.[i];
-    if (L?.errors?.length) issues.push(`${loc.name} lifts: ${L.errors.join("; ")}`);
+    if (L?.errors?.length) (L.errors.every(e => /no lift-status adapter/.test(e)) ? noAdapter : issues).push(L.errors.every(e => /no lift-status adapter/.test(e)) ? loc.name : `${loc.name} lifts: ${L.errors.join("; ")}`);
     const r = evaluate(loc, weather[loc.id], { today: todayIndex, station, avy, lifts: L, manual: overrides[loc.id] || {}, roads, obs });
     return { id: loc.id, name: loc.name, kind: loc.kind, region: loc.region, top: loc.top, base: loc.base ?? null, trailhead: loc.trailhead ?? null,
       note: loc.note ?? null, routes: loc.routes || [], skinTrack: loc.skinTrack ?? null, ...r };
   });
+  if (noAdapter.length) issues.push(`No automatic lift status yet for ${noAdapter.join(", ")}. Verdicts there use snow and wind only.`);
   return { generatedAt: new Date().toISOString(), todayIndex, regions, avalanche: avy, roads: roads || null, issues, locations: results };
 }
 
@@ -35,11 +37,12 @@ export async function build() {
     settle("Open-Meteo", fetchWeather(locations)),
     settle("SNOTEL", fetchSnowDepth(locations)),
     settle("Sierra Avalanche Center forecast", fetchAvalanche()),
-    settle("SAC observations", fetchAvalancheObs()),
+    process.env.SAC_OBS === "1" ? settle("SAC observations", fetchAvalancheObs()) : Promise.resolve(null),
     settle("Caltrans road status", fetchRoads()),
     ...locations.map(l => fetchLiftStatus(l, overrides[l.id]).catch(e => ({ errors: [e.message] })))
   ]);
   if (!weather) throw new Error(`Weather is required and failed. ${issues.join("; ")}`);
+  if (process.env.SAC_OBS !== "1") issues.push("Recent-avalanche flags are off: the avalanche.org observations API requires a login.");
   if (!process.env.NV511_KEY) issues.push("NV-431 (Mt. Rose Hwy) road status is off. Set NV511_KEY to enable it.");
 
   const out = assemble({ regions, locations, overrides, weather, depths, avy, obs, roads, lifts, issues });

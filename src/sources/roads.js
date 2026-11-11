@@ -64,4 +64,4 @@ export async function fetchRoads() {
   return mergeRoads(...ok);
 }
 
-export { routeKey };
+export { routeKey, records, CC, LCS };

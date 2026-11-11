@@ -55,6 +55,7 @@ export function parseVail(html) {
   const feed = extractAssignedJson(html, "TerrainStatusFeed");
   if (!feed) throw new Error("TerrainStatusFeed not found on page");
   const lifts = feed.Lifts || feed.lifts || [];
+  if (!lifts.length) throw new Error(`terrain feed has no lifts yet (keys: ${Object.keys(feed).slice(0, 8).join(", ")})`);
   const trails = (feed.GroomingAreas || []).flatMap(a => a.Runs || a.Trails || []).concat(feed.Trails || feed.Runs || []);
   const openTrails = trails.filter(isOpen);
   const groomedFlag = openTrails.some(t => "IsGroomed" in t);
@@ -91,9 +92,8 @@ export async function fetchLiftStatus(loc, manual) {
   if (adapter && loc.statusUrl) {
     try { status = await adapter(loc); } catch (e) { errors.push(`${loc.operator}: ${e.message}`); }
   }
-  if (!status) {
-    try { status = await fromLiftie(loc.liftie); } catch (e) { errors.push(`liftie: ${e.message}`); }
-  }
+  // Liftie's hosted API now blocks automated requests (project archived 2023), so there is no generic fallback.
+  if (!status && !adapter) errors.push("no lift-status adapter yet; set it in config/manual-status.json");
   status = applyManual(status, manual);
   if (errors.length) status = { ...(status || {}), errors };
   return status;
