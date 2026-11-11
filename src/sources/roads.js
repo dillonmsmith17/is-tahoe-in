@@ -20,31 +20,34 @@ function* records(node) {
   }
 }
 
+// Each entry in `data` is one station/segment. Route and status sit in different nested objects,
+// so read each entry as a whole rather than the object that happens to hold the route.
+const items = json => (Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []);
+const routeOf = s => (s.match(/"route"\s*:\s*"([^"]+)"/i) || [])[1];
+const placeOf = s => (s.match(/"(?:locationName|beginLocationName|nearbyPlace)"\s*:\s*"([^"]{3,80})"/i) || [])[1] || null;
+
 export function parseChainControls(json) {
   const out = {};
-  for (const rec of records(json)) {
-    const s = JSON.stringify(rec);
-    const route = routeKey(rec.route ?? rec.Route);
-    const code = (s.match(/\bR[0-3]\b/) || [])[0];
-    if (!route || !code) continue;
-    if (!out[route] || RANK[code] > RANK[out[route].status]) {
-      const where = (s.match(/"(?:locationName|beginLocationName|nearbyPlace|description)"\s*:\s*"([^"]{3,80})"/i) || [])[1] || null;
-      out[route] = { status: code, where };
-    }
+  for (const it of items(json)) {
+    const s = JSON.stringify(it);
+    const route = routeKey(routeOf(s) || "");
+    const m = s.match(/"status"\s*:\s*"R-?([0-3])"/i) || s.match(/\bR-?([0-3])\b/);
+    if (!route || !m) continue;
+    const code = `R${m[1]}`;
+    if (!out[route] || RANK[code] > RANK[out[route].status]) out[route] = { status: code, where: code === "R0" ? null : placeOf(s) };
   }
   return out;
 }
 
 export function parseClosures(json, now = new Date()) {
   const out = {};
-  for (const rec of records(json)) {
-    const s = JSON.stringify(rec);
-    if (!/full/i.test(s) || !/closure|closed/i.test(s)) continue;
-    // ignore closures that are only scheduled for later
+  for (const it of items(json)) {
+    const s = JSON.stringify(it);
+    if (!/full/i.test(s) || !/clos/i.test(s)) continue;
     const start = (s.match(/"(?:closureStartDate|startDate|beginDate)"\s*:\s*"([^"]+)"/i) || [])[1];
     if (start && new Date(start) > now) continue;
-    const route = routeKey(rec.route ?? rec.Route);
-    if (route) out[route] = { status: "CLOSED", where: (s.match(/"(?:beginLocationName|locationName|nearbyPlace)"\s*:\s*"([^"]{3,80})"/i) || [])[1] || null };
+    const route = routeKey(routeOf(s) || "");
+    if (route) out[route] = { status: "CLOSED", where: placeOf(s) };
   }
   return out;
 }
@@ -64,4 +67,4 @@ export async function fetchRoads() {
   return mergeRoads(...ok);
 }
 
-export { routeKey, records, CC, LCS };
+export { routeKey, records, items, CC, LCS };

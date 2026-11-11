@@ -141,3 +141,19 @@ test("Liftie and Vail lift parsers", () => {
   assert.equal(v.terrainPct, 50); assert.equal(v.groomersOnly, true);
   assert.equal(applyManual(v, { open: false }).manualOpen, false);
 });
+
+test("chain-control parser reads status from a sibling object of the route", () => {
+  const j = { data: [
+    { cc: { location: { route: "I-80", locationName: "Kingvale" }, statusData: { status: "R2" } } },
+    { cc: { location: { route: "US-50", locationName: "Echo Summit" }, statusData: { status: "R0" } } }
+  ] };
+  const r = parseChainControls(j);
+  assert.equal(r["80"].status, "R2"); assert.equal(r["80"].where, "Kingvale"); assert.equal(r["50"].status, "R0");
+});
+
+test("empty pre-season Vail feed counts as unknown, not closed", () => {
+  const v = parseVail(`<script>FR.TerrainStatusFeed = {"Date":"x","Lifts":[],"GroomingAreas":[]};</script>`);
+  assert.equal(v.liftsOpen, null);
+  const r = run("kirkwood", { lifts: v });
+  assert.notEqual(r.why, "Lifts not spinning");
+});

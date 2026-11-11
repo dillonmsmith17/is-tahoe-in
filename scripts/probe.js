@@ -7,7 +7,7 @@ import { fetchSnowDepth } from "../src/sources/snotel.js";
 import { fetchAvalanche } from "../src/sources/avalanche.js";
 import { parseLiftie, parseVail } from "../src/sources/lifts.js";
 import { fetchAvalancheObs } from "../src/sources/avyobs.js";
-import { fetchRoads, records, CC, LCS } from "../src/sources/roads.js";
+import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
 
 const { locations } = JSON.parse(await readFile(new URL("../config/locations.json", import.meta.url), "utf8"));
 const ok = s => console.log(`  ✓ ${s}`), bad = s => console.log(`  ✕ ${s}`);
@@ -31,11 +31,11 @@ console.log("Caltrans feeds (raw)");
 for (const [label, url] of [["D3 chain controls", CC(3)], ["D10 chain controls", CC(10)], ["D3 lane closures", LCS(3)], ["D10 lane closures", LCS(10)]]) {
   try {
     const j = await get(url, { retries: 0 });
-    const recs = [...records(j)];
+    const recs = items(j);
     const routes = {};
-    for (const r of recs) { const k = String(r.route ?? r.Route); const st = (JSON.stringify(r).match(/\bR[0-3]\b/) || ["-"])[0]; routes[k] = routes[k] || new Set(); routes[k].add(st); }
-    ok(`${label}: ${recs.length} records, top-level keys [${Object.keys(j).join(", ")}], routes ${Object.entries(routes).map(([k, v]) => `${k}:${[...v].join("/")}`).join(" ") || "none"}`);
-    if (recs[0]) console.log(`    sample: ${JSON.stringify(recs[0]).slice(0, 600)}`);
+    for (const r of recs) { const s = JSON.stringify(r); const k = (s.match(/"route"\s*:\s*"([^"]+)"/i) || [, "?"])[1]; const st = (s.match(/"status"\s*:\s*"([^"]{1,12})"/i) || [, "-"])[1]; routes[k] = routes[k] || new Set(); routes[k].add(st); }
+    ok(`${label}: ${recs.length} entries, routes ${Object.entries(routes).filter(([k]) => /80|50|89|88|267|28|431/.test(k)).map(([k, v]) => `${k}:${[...v].join("/")}`).join(" ") || "none of ours"}`);
+    if (recs[0]) console.log(`    sample entry: ${JSON.stringify(recs[0]).slice(0, 900)}`);
   } catch (e) { bad(`${label}: ${e.message}`); }
 }
 

@@ -55,7 +55,7 @@ export function parseVail(html) {
   const feed = extractAssignedJson(html, "TerrainStatusFeed");
   if (!feed) throw new Error("TerrainStatusFeed not found on page");
   const lifts = feed.Lifts || feed.lifts || [];
-  if (!lifts.length) throw new Error(`terrain feed has no lifts yet (keys: ${Object.keys(feed).slice(0, 8).join(", ")})`);
+  if (!lifts.length) return { liftsOpen: null, liftsTotal: 0, trailsOpen: null, trailsTotal: null, terrainPct: null, groomersOnly: null, source: "Resort site (no lifts listed yet)" };
   const trails = (feed.GroomingAreas || []).flatMap(a => a.Runs || a.Trails || []).concat(feed.Trails || feed.Runs || []);
   const openTrails = trails.filter(isOpen);
   const groomedFlag = openTrails.some(t => "IsGroomed" in t);
