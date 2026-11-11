@@ -5,7 +5,7 @@ import { get } from "../src/http.js";
 import { fetchWeather } from "../src/sources/openmeteo.js";
 import { fetchSnowDepth } from "../src/sources/snotel.js";
 import { fetchAvalanche } from "../src/sources/avalanche.js";
-import { parseVail, parseAlterra, fetchAlterraFeed, alterraAreas } from "../src/sources/lifts.js";
+import { parseVail, parseAlterra, fetchAlterraFeed, alterraAreas, fetchSite } from "../src/sources/lifts.js";
 import { fetchAvalancheObs } from "../src/sources/avyobs.js";
 import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
 
@@ -59,6 +59,10 @@ for (const l of locations.filter(x => x.kind === "resort")) {
     try { const s = parseAlterra(await fetchAlterraFeed(l.alterra.slug), l.alterra.areas); ok(`${l.name} (MtnPowder): ${s.liftsOpen ?? "?"}/${s.liftsTotal} lifts open, ${s.liftsHold ?? 0} on hold, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}, groomers only: ${s.groomersOnly}, ${s.source}`); }
     catch (e) { bad(`${l.name} (MtnPowder): ${e.message}`); }
   }
+  if (l.operator === "site") {
+    try { const s = await fetchSite(l.id); ok(`${l.name} (${s.source}): ${s.liftsOpen}/${s.liftsTotal} lifts open, ${s.liftsHold} on hold, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}${s.reportedBase != null ? `, resort base ${s.reportedBase}"` : ""}`); }
+    catch (e) { bad(`${l.name} (site): ${e.message}`); }
+  }
   if (l.operator === "vail" && l.statusUrl) {
     try { const s = parseVail(await get(l.statusUrl, { type: "html" })); ok(`${l.name} (resort site): ${s.liftsOpen}/${s.liftsTotal} lifts, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}`); }
     catch (e) { bad(`${l.name} (resort site): ${e.message}`); }
@@ -66,7 +70,7 @@ for (const l of locations.filter(x => x.kind === "resort")) {
 }
 
 console.log("Resorts with no lift-status source yet");
-console.log("  " + locations.filter(x => x.kind === "resort" && !["vail", "alterra"].includes(x.operator)).map(x => x.name).join(", "));
+console.log("  " + (locations.filter(x => x.kind === "resort" && !["vail", "alterra", "site"].includes(x.operator)).map(x => x.name).join(", ") || "none"));
 
 console.log("MtnPowder area mapping check");
 try {

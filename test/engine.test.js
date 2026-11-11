@@ -7,7 +7,7 @@ import { parse as parseSnotel, parseStations } from "../src/sources/snotel.js";
 import { parseForecast } from "../src/sources/avalanche.js";
 import { parseObservations } from "../src/sources/avyobs.js";
 import { parseChainControls, parseClosures, mergeRoads } from "../src/sources/roads.js";
-import { parseLiftie, parseVail, applyManual } from "../src/sources/lifts.js";
+import { parseVail, applyManual } from "../src/sources/lifts.js";
 import * as F from "./fixture.js";
 
 const { locations } = JSON.parse(readFileSync(new URL("../config/locations.json", import.meta.url)));
@@ -140,8 +140,7 @@ test("road parsers find chain controls and full closures", () => {
   assert.equal(mergeRoads(cc, { "80": { status: "R1" } })["80"].status, "R2");
 });
 
-test("Liftie and Vail lift parsers", () => {
-  assert.equal(parseLiftie({ lifts: { status: { A: "open", B: "closed" } } }).liftsOpen, 1);
+test("Vail lift parser", () => {
   const v = parseVail(`<script>FR.TerrainStatusFeed = {"Lifts":[{"Status":1},{"Status":0}],"GroomingAreas":[{"Runs":[{"IsOpen":true,"IsGroomed":true},{"IsOpen":false}]}]};</script>`);
   assert.equal(v.terrainPct, 50); assert.equal(v.groomersOnly, true);
   assert.equal(applyManual(v, { open: false }).manualOpen, false);

@@ -3,7 +3,7 @@
     "Coordinates and elevations are approximate summit/upper-mountain points; Open-Meteo is called with the summit elevation so temps and snow are downscaled to it.",
     "trailhead = approx starting elevation for tours. core = [lo, hi] ft where most of the skiing happens; defaults to 25-85% of resort vertical or 30-100% of a tour's vertical.",
     "routes = approach roads checked for chain controls/closures. skinTrack = 'sheltered' or 'exposed' (starting guesses, tune these).",
-    "operator + adapter config: vail uses statusUrl; alterra uses alterra.slug (v4.mtnfeed.com/resorts/<slug>.json) and alterra.areas, the MtnPowder mountain areas that make up this tile (Palisades splits Olympic Valley and Alpine this way)."
+    "operator + adapter config: vail uses statusUrl; site uses the parser for this id in src/sources/resorts.js; alterra uses alterra.slug (v4.mtnfeed.com/resorts/<slug>.json) and alterra.areas, the MtnPowder mountain areas that make up this tile (Palisades splits Olympic Valley and Alpine this way)."
   ],
   "regions": [
     {
@@ -34,7 +34,7 @@
       "top": 9700,
       "base": 8260,
       "snotel": "652:NV:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80",
         "NV-431"
@@ -67,7 +67,7 @@
       "top": 8540,
       "base": 6700,
       "snotel": "615:NV:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80",
         "NV-431"
@@ -152,7 +152,7 @@
       "top": 7880,
       "base": 6230,
       "snotel": "848:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80",
         "SR-89"
@@ -236,7 +236,7 @@
       "top": 8383,
       "base": 6883,
       "snotel": "428:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80"
       ]
@@ -251,7 +251,7 @@
       "top": 7700,
       "base": 7200,
       "snotel": "428:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80"
       ]
@@ -266,7 +266,7 @@
       "top": 8012,
       "base": 7031,
       "snotel": "428:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80"
       ]
@@ -281,7 +281,7 @@
       "top": 7350,
       "base": 6750,
       "snotel": "541:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "I-80"
       ]
@@ -361,7 +361,7 @@
       "top": 8852,
       "base": 6640,
       "snotel": "463:CA:SNTL",
-      "operator": "independent",
+      "operator": "site",
       "routes": [
         "US-50"
       ]

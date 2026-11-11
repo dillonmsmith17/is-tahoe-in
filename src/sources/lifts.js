@@ -1,32 +1,8 @@
 // Lift and terrain status. Order of precedence per resort:
-//   1. operator adapter (Vail sites: lifts + trails from the embedded terrain feed)
-//   2. Liftie public API (lifts only, broad coverage)
-//   3. manual overrides in config/manual-status.json (always applied last)
+//   1. operator adapter: vail (embedded terrain feed), alterra (MtnPowder), site (per-resort page parsers)
+//   2. manual overrides in config/manual-status.json (always applied last)
 import { get } from "../http.js";
-
-/* ---------- Liftie ---------- */
-// GET https://liftie.info/api/resort/<id> -> { lifts: { status: {name: "open"|"closed"|"hold"|"scheduled"}, stats: {...} } }
-export function parseLiftie(json) {
-  const status = json?.lifts?.status;
-  if (!status || typeof status !== "object") throw new Error("no lift status in Liftie response");
-  const vals = Object.values(status);
-  return {
-    liftsOpen: vals.filter(v => v === "open").length,
-    liftsHold: vals.filter(v => v === "hold").length,
-    liftsTotal: vals.length,
-    lifts: status,
-    source: "Liftie"
-  };
-}
-
-async function fromLiftie(ids) {
-  let lastErr;
-  for (const id of ids || []) {
-    try { return { ...parseLiftie(await get(`https://liftie.info/api/resort/${id}`, { browser: true })), liftieId: id }; }
-    catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error("no Liftie id configured");
-}
+import { RESORT_SOURCES } from "./resorts.js";
 
 /* ---------- Vail Resorts (Heavenly, Northstar, Kirkwood) ---------- */
 // Vail's terrain-and-lift-status pages embed a JSON object assigned to `TerrainStatusFeed`.
@@ -122,7 +98,15 @@ export function parseAlterra(feed, areaNames) {
   };
 }
 
+export async function fetchSite(id) {
+  const src = RESORT_SOURCES[id];
+  if (!src) throw new Error(`no site parser for ${id}`);
+  const bodies = await Promise.all(src.urls.map(u => get(u, { type: src.json ? "json" : "html", browser: true, timeoutMs: 30000 })));
+  return src.parse(bodies);
+}
+
 const ADAPTERS = {
+  site: loc => fetchSite(loc.id),
   vail: async loc => parseVail(await get(loc.statusUrl, { type: "html" })),
   alterra: async loc => parseAlterra(await fetchAlterraFeed(loc.alterra.slug), loc.alterra.areas)
 };
@@ -131,7 +115,7 @@ const ADAPTERS = {
 export function applyManual(status, manual) {
   if (!manual) return status;
   const s = { ...(status || {}) };
-  for (const k of ["liftsOpen", "liftsTotal", "terrainPct", "groomersOnly", "note"]) if (k in manual) s[k] = manual[k];
+  for (const k of ["liftsOpen", "liftsTotal", "terrainPct", "groomersOnly", "reportedBase", "note"]) if (k in manual) s[k] = manual[k];
   if ("open" in manual) s.manualOpen = manual.open;
   if (Object.keys(manual).length) s.source = s.source ? `${s.source} + manual` : "Manual";
   return s;
@@ -142,10 +126,9 @@ export async function fetchLiftStatus(loc, manual) {
   const errors = [];
   let status = null;
   const adapter = ADAPTERS[loc.operator];
-  if (adapter && (loc.statusUrl || loc.alterra)) {
+  if (adapter && (loc.statusUrl || loc.alterra || loc.operator === "site")) {
     try { status = await adapter(loc); } catch (e) { errors.push(`${loc.operator}: ${e.message}`); }
   }
-  // Liftie's hosted API now blocks automated requests (project archived 2023), so there is no generic fallback.
   if (!status && !adapter) errors.push("no lift-status adapter yet; set it in config/manual-status.json");
   status = applyManual(status, manual);
   if (errors.length) status = { ...(status || {}), errors };

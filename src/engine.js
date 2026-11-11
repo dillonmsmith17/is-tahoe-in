@@ -134,6 +134,9 @@ function verdict(loc, wx, di, o, live) {
     baseIn = Math.round(st0.depth * k);
     baseSource = `SNOTEL ${String(st0.triplet || "").split(":")[0]}${st0.elev ? ` at ${ft(st0.elev)} ft, scaled to ${ft(B.core)} ft` : ""} (${st0.date})`;
   } else { baseIn = Math.round(0.62 * s7); baseSource = "modeled from 7-day snowfall (no station reading)"; }
+  // Resorts make snow; a station can't see that. Use the resort's own base report when it's higher.
+  const rb = loc.kind === "resort" ? o.lifts?.reportedBase : null;
+  if (rb != null && rb > baseIn) { baseIn = rb; baseSource = `${o.lifts.source} base report (includes snowmaking)`; }
   if (!live) baseIn += Math.round(0.62 * s24);
 
   let lastSnow = -1; for (let i = win.length - 1; i >= 0; i--) if (win[i].snow >= 2) { lastSnow = i; break; }
