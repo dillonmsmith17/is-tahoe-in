@@ -39,15 +39,21 @@ export function parseChainControls(json) {
   return out;
 }
 
+// A closure only counts when it is a Full closure of the highway itself (not a ramp or connector),
+// active right now, and starts inside the Tahoe area. Scheduled night work elsewhere is ignored.
+const TAHOE_BOX = { latMin: 38.55, latMax: 39.55, lonMin: -120.65, lonMax: -119.75 };
 export function parseClosures(json, now = new Date()) {
-  const out = {};
+  const out = {}, t = now.getTime() / 1000;
   for (const it of items(json)) {
-    const s = JSON.stringify(it);
-    if (!/full/i.test(s) || !/clos/i.test(s)) continue;
-    const start = (s.match(/"(?:closureStartDate|startDate|beginDate)"\s*:\s*"([^"]+)"/i) || [])[1];
-    if (start && new Date(start) > now) continue;
-    const route = routeKey(routeOf(s) || "");
-    if (route) out[route] = { status: "CLOSED", where: placeOf(s) };
+    const c = it.lcs || it, cl = c.closure || {}, ts = cl.closureTimestamp || {}, b = c.location?.begin || {};
+    if (!/^full$/i.test(cl.typeOfClosure || "")) continue;
+    if (/ramp|connector/i.test(cl.facility || "")) continue;
+    const start = Number(ts.closureStartEpoch), end = Number(ts.closureEndEpoch), open = ts.isClosureEndIndefinite === "true";
+    if (!(start <= t) || !(open || end >= t)) continue;
+    const lat = Number(b.beginLatitude), lon = Number(b.beginLongitude);
+    if (!(lat >= TAHOE_BOX.latMin && lat <= TAHOE_BOX.latMax && lon >= TAHOE_BOX.lonMin && lon <= TAHOE_BOX.lonMax)) continue;
+    const route = routeKey(b.beginRoute || "");
+    if (route) out[route] = { status: "CLOSED", where: b.beginLocationName || b.beginNearbyPlace || null, until: open ? null : `${ts.closureEndDate} ${ts.closureEndTime}` };
   }
   return out;
 }

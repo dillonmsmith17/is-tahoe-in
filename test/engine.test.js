@@ -130,8 +130,13 @@ test("avalanche observation parser keeps only reported avalanches", () => {
 test("road parsers find chain controls and full closures", () => {
   const cc = parseChainControls({ data: [{ cc: { route: "80", location: { locationName: "Kingvale" }, statusData: { status: "R2" } } }, { cc: { route: "50", statusData: { status: "R0" } } }] });
   assert.equal(cc["80"].status, "R2");
-  const cl = parseClosures({ data: [{ lcs: { route: "SR-89", closure: { closureType: "Full", typeOfClosure: "Full closure" } } }] });
-  assert.equal(cl["89"].status, "CLOSED");
+  const now = new Date("2026-11-13T22:00:00-08:00"), ep = d => String(new Date(d).getTime() / 1000);
+  const mk = (facility, type, lat, route, from, to) => ({ lcs: { location: { begin: { beginRoute: route, beginLatitude: String(lat), beginLongitude: "-120.3", beginLocationName: "Donner Lake Interchange" } },
+    closure: { facility, typeOfClosure: type, closureTimestamp: { closureStartEpoch: ep(from), closureEndEpoch: ep(to), isClosureEndIndefinite: "false" } } } });
+  const live = ["2026-11-13T20:00:00-08:00", "2026-11-14T05:00:00-08:00"];
+  const cl = parseClosures({ data: [mk("Freeway", "Full", 39.32, "I-80", ...live), mk("On Ramp", "Full", 39.32, "SR-89", ...live), mk("Freeway", "Lane", 39.32, "US-50", ...live),
+    mk("Freeway", "Full", 38.55 - 0.1, "SR-88", ...live), mk("Conventional Hwy", "Full", 39.0, "SR-28", "2026-11-14T20:00:00-08:00", "2026-11-15T05:00:00-08:00")] }, now);
+  assert.deepEqual(Object.keys(cl), ["80"]);
   assert.equal(mergeRoads(cc, { "80": { status: "R1" } })["80"].status, "R2");
 });
 
