@@ -4,7 +4,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   discover:
@@ -15,8 +15,10 @@ jobs:
         with:
           node-version: 20
       - run: node scripts/snapshot.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: snapshots
-          path: snapshots/
-          retention-days: 3
+      - name: Push snapshots to a throwaway branch
+        run: |
+          cd snapshots
+          git init -q -b snapshots
+          git -c user.name=snapshot-bot -c user.email=bot@users.noreply.github.com add -A
+          git -c user.name=snapshot-bot -c user.email=bot@users.noreply.github.com commit -qm "Resort page snapshots $(date -u +%FT%TZ)"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" snapshots
