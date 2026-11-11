@@ -38,7 +38,7 @@ for (const l of locations.filter(x => x.kind === "resort")) {
   }
   let hit = false;
   for (const id of l.liftie || []) {
-    try { const s = parseLiftie(await get(`https://liftie.info/api/resort/${id}`, { retries: 0 })); ok(`${l.name} (Liftie "${id}"): ${s.liftsOpen}/${s.liftsTotal} lifts`); hit = true; break; }
+    try { const s = parseLiftie(await get(`https://liftie.info/api/resort/${id}`, { retries: 0, browser: true })); ok(`${l.name} (Liftie "${id}"): ${s.liftsOpen}/${s.liftsTotal} lifts`); hit = true; break; }
     catch { /* try next id */ }
   }
   if (!hit) bad(`${l.name}: no Liftie id worked (${(l.liftie || []).join(", ") || "none set"}). Add an adapter or use manual-status.json.`);

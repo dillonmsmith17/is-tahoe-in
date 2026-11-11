@@ -22,7 +22,7 @@ export function parseLiftie(json) {
 async function fromLiftie(ids) {
   let lastErr;
   for (const id of ids || []) {
-    try { return { ...parseLiftie(await get(`https://liftie.info/api/resort/${id}`)), liftieId: id }; }
+    try { return { ...parseLiftie(await get(`https://liftie.info/api/resort/${id}`, { browser: true })), liftieId: id }; }
     catch (e) { lastErr = e; }
   }
   throw lastErr || new Error("no Liftie id configured");

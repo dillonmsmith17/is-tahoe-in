@@ -48,6 +48,8 @@ export async function build() {
   for (const f of ["index.html", "app.js"]) await copyFile(new URL(`site/${f}`, root), new URL(`public/${f}`, root));
   console.log(`Built data.json: ${out.locations.filter(r => r.yes).length}/${out.locations.length} in. ${issues.length} note(s).`);
   for (const s of issues) console.log("  -", s);
+  console.log("\nVerdicts (today | tomorrow | new snow | surface | reason):");
+  for (const r of out.locations) console.log(`  ${r.id.padEnd(18)} ${r.yes ? "YES" : "no "} | ${r.tomorrow?.yes ? "YES" : "no "} | ${String(Math.round(r.overnight)).padStart(2)}" overnight, ${String(Math.round(r.s72)).padStart(2)}" 72h | base ${String(r.depth).padStart(3)}" | ${r.surface.padEnd(15)} | ${r.why}`);
   return out;
 }
 

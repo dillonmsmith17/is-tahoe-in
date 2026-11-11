@@ -25,6 +25,9 @@ jobs:
         with:
           node-version: 20
       - run: npm test
+      - name: Probe data sources
+        run: npm run probe
+        continue-on-error: true
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
