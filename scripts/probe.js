@@ -5,7 +5,7 @@ import { get } from "../src/http.js";
 import { fetchWeather } from "../src/sources/openmeteo.js";
 import { fetchSnowDepth } from "../src/sources/snotel.js";
 import { fetchAvalanche } from "../src/sources/avalanche.js";
-import { parseLiftie, parseVail } from "../src/sources/lifts.js";
+import { parseVail, parseAlterra, fetchAlterraFeed } from "../src/sources/lifts.js";
 import { fetchAvalancheObs } from "../src/sources/avyobs.js";
 import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
 
@@ -55,6 +55,10 @@ try { const r = await fetchRoads(); const keys = Object.keys(r); ok(keys.length 
 
 console.log("Lift status");
 for (const l of locations.filter(x => x.kind === "resort")) {
+  if (l.operator === "alterra" && l.alterra) {
+    try { const s = parseAlterra(await fetchAlterraFeed(l.alterra.slug), l.alterra.side); ok(`${l.name} (MtnPowder): ${s.liftsOpen ?? "?"}/${s.liftsTotal} lifts open, ${s.liftsHold ?? 0} on hold, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}, groomers only: ${s.groomersOnly}, ${s.source}`); }
+    catch (e) { bad(`${l.name} (MtnPowder): ${e.message}`); }
+  }
   if (l.operator === "vail" && l.statusUrl) {
     try { const s = parseVail(await get(l.statusUrl, { type: "html" })); ok(`${l.name} (resort site): ${s.liftsOpen}/${s.liftsTotal} lifts, trails ${s.trailsOpen ?? "?"}/${s.trailsTotal ?? "?"}`); }
     catch (e) { bad(`${l.name} (resort site): ${e.message}`); }
@@ -62,4 +66,21 @@ for (const l of locations.filter(x => x.kind === "resort")) {
 }
 
 console.log("Resorts with no lift-status source yet");
-console.log("  " + locations.filter(x => x.kind === "resort" && x.operator !== "vail").map(x => x.name).join(", "));
+console.log("  " + locations.filter(x => x.kind === "resort" && !["vail", "alterra"].includes(x.operator)).map(x => x.name).join(", "));
+
+console.log("MtnPowder feed shape (palisades-tahoe)");
+try {
+  const f = await fetchAlterraFeed("palisades-tahoe");
+  console.log(`  top-level keys: ${Object.keys(f).join(", ")}`);
+  for (const r of f.Resorts || []) {
+    console.log(`  Resort "${r.Name}" (id ${r.Id ?? "?"}), keys: ${Object.keys(r).slice(0, 25).join(", ")}`);
+    for (const a of r.MountainAreas || []) {
+      const ls = a.Lifts || [], ts = a.Trails || [];
+      const cnt = (xs) => Object.entries(xs.reduce((m, x) => (m[x.StatusEnglish ?? x.Status] = (m[x.StatusEnglish ?? x.Status] || 0) + 1, m), {})).map(([k, v]) => `${k}:${v}`).join(" ");
+      console.log(`    Area "${a.Name}": ${ls.length} lifts [${cnt(ls)}], ${ts.length} trails [${cnt(ts)}]`);
+    }
+    const l0 = r.MountainAreas?.find(a => a.Lifts?.length)?.Lifts[0], t0 = r.MountainAreas?.find(a => a.Trails?.length)?.Trails[0];
+    if (l0) console.log(`    sample lift keys: ${Object.keys(l0).join(", ")}`);
+    if (t0) console.log(`    sample trail: ${JSON.stringify(Object.fromEntries(Object.entries(t0).filter(([k]) => !/Hours|Description/i.test(k)))).slice(0, 700)}`);
+  }
+} catch (e) { bad(e.message); }

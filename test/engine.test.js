@@ -162,3 +162,18 @@ test("empty pre-season Vail feed counts as unknown, not closed", () => {
   const r = run("kirkwood", { lifts: v });
   assert.notEqual(r.why, "Lifts not spinning");
 });
+
+test("Alterra parser splits Palisades sides by mountain area and counts lifts and terrain", async () => {
+  const { parseAlterra } = await import("../src/sources/lifts.js");
+  const lift = (n, s) => ({ Name: n, StatusEnglish: s });
+  const trail = (n, s, g) => ({ Name: n, StatusEnglish: s, Grooming: g });
+  const feed = { Resorts: [{ Name: "Palisades Tahoe", MountainAreas: [
+    { Name: "Palisades", Lifts: [lift("KT-22", "open"), lift("Siberia", "wind_hold"), lift("Funitel", "open")], Trails: [trail("Mountain Run", "open", "Groomed"), trail("West Face", "closed", "")] },
+    { Name: "Alpine", Lifts: [lift("Summit Six", "closed"), lift("Roundhouse", "closed")], Trails: [trail("Promised Land", "closed", "")] }
+  ] }] };
+  const o = parseAlterra(feed, "olympic"), a = parseAlterra(feed, "alpine");
+  assert.equal(o.liftsOpen, 2); assert.equal(o.liftsHold, 1); assert.equal(o.liftsTotal, 3); assert.equal(o.terrainPct, 50); assert.equal(o.groomersOnly, true);
+  assert.equal(a.liftsOpen, 0); assert.equal(a.liftsTotal, 2); assert.equal(a.source, "MtnPowder");
+  const one = parseAlterra({ Resorts: [{ Name: "X", MountainAreas: [{ Name: "Main", Lifts: [lift("A", "open")] }] }] }, "alpine");
+  assert.match(one.source, /not split/);
+});
