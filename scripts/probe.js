@@ -50,6 +50,21 @@ for (const d of [3, 10]) {
   } catch (e) { bad(`D${d}: ${e.message}`); }
 }
 
+console.log("Caltrans closures counted as road-closed (details)");
+try {
+  const { parseClosures } = await import("../src/sources/roads.js");
+  for (const d of [3, 10]) {
+    const all = items(await get(LCS(d), { retries: 0 }));
+    for (const it of all) {
+      if (!Object.keys(parseClosures({ data: [it] })).length) continue;
+      const c = it.lcs || it, cl = c.closure, b = c.location?.begin || {}, e = c.location?.end || {}, ts = cl.closureTimestamp;
+      console.log(`  ${b.beginRoute} ${c.location?.travelFlowDirection || "?"}: ${b.beginLocationName || b.beginNearbyPlace} -> ${e.endLocationName || e.endNearbyPlace || "?"}`);
+      console.log(`     ${cl.typeOfClosure} closure of ${cl.facility}, lanes ${cl.lanesClosed}/${cl.totalExistingLanes}, work: ${cl.typeOfWork}, duration: ${cl.durationOfClosure}`);
+      console.log(`     scheduled ${ts.closureStartDate} ${ts.closureStartTime} -> ${ts.isClosureEndIndefinite === "true" ? "indefinite" : `${ts.closureEndDate} ${ts.closureEndTime}`}; started (10-97): ${cl.code1097?.isCode1097} ${cl.code1097?.code1097Timestamp?.code1097Date || ""} ${cl.code1097?.code1097Timestamp?.code1097Time || ""}; lifted (10-98): ${cl.code1098?.isCode1098}; 10-22: ${cl.code1022?.isCode1022}`);
+    }
+  }
+} catch (e) { bad(e.message); }
+
 console.log("Caltrans road status");
 try { const r = await fetchRoads(); const keys = Object.keys(r); ok(keys.length ? keys.map(k => `${k}: ${r[k].status}`).join(", ") : "feeds answered, no chain controls or closures right now"); } catch (e) { bad(e.message); }
 
