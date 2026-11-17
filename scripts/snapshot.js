@@ -3,6 +3,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { get } from "../src/http.js";
 
 export const PAGES = {
+  "kirkwood": ["https://www.kirkwood.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx"],
+  "heavenly": ["https://www.skiheavenly.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx"],
+  "northstar": ["https://www.northstarcalifornia.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx"],
   "sugar-bowl": ["https://www.sugarbowl.com/conditions", "https://www.sugarbowl.com/js/conditions_vars.js.cfm"],
   "boreal": ["https://api.rideboreal.com/api/v1/dor/drupal/lifts", "https://api.rideboreal.com/api/v1/dor/drupal/trails"],
   "mt-rose": ["https://skirose.com/snow-report/", "https://skirose.com/snow-report-lite/"],
