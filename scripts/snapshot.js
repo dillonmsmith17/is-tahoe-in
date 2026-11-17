@@ -20,7 +20,7 @@ await mkdir("snapshots", { recursive: true });
 for (const [id, urls] of Object.entries(PAGES)) {
   for (const [i, url] of urls.entries()) {
     try {
-      const body = await get(url, { type: "html", browser: true, retries: 0, timeoutMs: 30000 });
+      const body = await get(url, { type: "html", browser: !/kirkwood|skiheavenly|northstar/.test(url), retries: 0, timeoutMs: 30000 });
       const ext = /\.json|api\./.test(url) ? "json" : /\.js/.test(url) ? "js" : "html";
       await writeFile(`snapshots/${id}-${i}.${ext}`, body);
       console.log(`saved ${id}-${i}.${ext} (${body.length} bytes) from ${url}`);
