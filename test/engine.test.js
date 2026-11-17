@@ -161,8 +161,6 @@ test("empty Vail feed means not open for the season", () => {
   assert.equal(run("kirkwood", { lifts: v }).why, "Lifts not spinning");
   assert.throws(() => parseVail(`<script>FR.TerrainStatusFeed = {"IsSuccessful":false,"ErrorDetails":"down","Lifts":[]};</script>`), /reported an error/);
 });
-  assert.notEqual(r.why, "Lifts not spinning");
-});
 
 test("Alterra parser splits Palisades sides by mountain area and counts lifts and terrain", async () => {
   const { parseAlterra } = await import("../src/sources/lifts.js");
