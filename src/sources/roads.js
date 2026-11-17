@@ -55,7 +55,7 @@ export function parseClosures(json, now = new Date()) {
     const lat = Number(b.beginLatitude), lon = Number(b.beginLongitude);
     if (!(lat >= TAHOE_BOX.latMin && lat <= TAHOE_BOX.latMax && lon >= TAHOE_BOX.lonMin && lon <= TAHOE_BOX.lonMax)) continue;
     const route = routeKey(b.beginRoute || "");
-    if (route) out[route] = { status: "CLOSED", where: b.beginLocationName || b.beginNearbyPlace || null, until: open ? null : `${ts.closureEndDate} ${ts.closureEndTime}`, raw: it };
+    if (route) out[route] = { status: "CLOSED", where: b.beginLocationName || b.beginNearbyPlace || null, until: open ? null : `${ts.closureEndDate} ${ts.closureEndTime}` };
   }
   return out;
 }
