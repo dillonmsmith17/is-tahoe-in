@@ -68,5 +68,5 @@ export function parse(json, locs) {
 }
 
 export async function fetchWeather(locs) {
-  return parse(await get(buildUrl(locs), { timeoutMs: 40000 }), locs);
+  return parse(await get(buildUrl(locs), { timeoutMs: 40000, retries: 3 }), locs);
 }

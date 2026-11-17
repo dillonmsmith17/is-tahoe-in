@@ -12,8 +12,8 @@ import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
 const { locations } = JSON.parse(await readFile(new URL("../config/locations.json", import.meta.url), "utf8"));
 const ok = s => console.log(`  ✓ ${s}`), bad = s => console.log(`  ✕ ${s}`);
 
-console.log("Open-Meteo");
-try { const w = await fetchWeather(locations); const a = w[locations[0].id]; ok(`${Object.keys(w).length} locations × 2 elevations, ${a.core.days.length} days, ${a.core.hours.time.length} hours, freezing level ${a.core.hours.freezeFt.some(x => x != null) ? "present" : "MISSING"}`); } catch (e) { bad(e.message); }
+console.log("Open-Meteo (one point only; the build fetches all 48, and Open-Meteo rate-limits per point)");
+try { const w = await fetchWeather(locations.slice(0, 1)); const a = w[locations[0].id]; ok(`${a.core.days.length} days, ${a.core.hours.time.length} hours, freezing level ${a.core.hours.freezeFt.some(x => x != null) ? "present" : "MISSING"}`); } catch (e) { bad(e.message); }
 
 console.log("SNOTEL (depth, station elevation)");
 try {

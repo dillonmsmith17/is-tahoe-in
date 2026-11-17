@@ -39,7 +39,7 @@ export function parseChainControls(json) {
   return out;
 }
 
-// A closure only counts when it is a Full closure of the highway itself (not a ramp or connector),
+// A closure only counts when it is a Full closure of the highway itself (not a ramp, connector or rest area),
 // active right now, and starts inside the Tahoe area. Scheduled night work elsewhere is ignored.
 const TAHOE_BOX = { latMin: 38.55, latMax: 39.55, lonMin: -120.65, lonMax: -119.75 };
 export function parseClosures(json, now = new Date()) {
@@ -47,7 +47,9 @@ export function parseClosures(json, now = new Date()) {
   for (const it of items(json)) {
     const c = it.lcs || it, cl = c.closure || {}, ts = cl.closureTimestamp || {}, b = c.location?.begin || {};
     if (!/^full$/i.test(cl.typeOfClosure || "")) continue;
-    if (/ramp|connector/i.test(cl.facility || "")) continue;
+    // Only the highway itself counts. Rest areas, ramps, connectors and vista points closing don't close the road.
+    if (!/^(freeway|conventional\s*h(igh)?wy|expressway|highway|mainline)/i.test(cl.facility || "")) continue;
+    if (cl.code1098?.isCode1098 === "true") continue; // Caltrans/CHP marked it lifted
     const start = Number(ts.closureStartEpoch), end = Number(ts.closureEndEpoch), open = ts.isClosureEndIndefinite === "true";
     if (!(start <= t) || !(open || end >= t)) continue;
     const lat = Number(b.beginLatitude), lon = Number(b.beginLongitude);

@@ -11,7 +11,14 @@ export async function get(url, { type = "json", timeoutMs = 20000, retries = 1, 
       const headers = { "user-agent": browser ? BROWSER_UA : UA, accept: type === "json" ? "application/json" : "text/html,*/*" };
       if (body) headers["content-type"] = "application/json";
       const res = await fetch(url, { signal: ctrl.signal, headers, method: body ? "POST" : "GET", body: body ? JSON.stringify(body) : undefined });
-      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      if (res.status === 429 && attempt < retries) {
+        // Rate limited: honour Retry-After (capped), then try again.
+        const wait = Math.min(90, Number(res.headers.get("retry-after")) || 30 * (attempt + 1));
+        lastErr = new Error(`HTTP 429 for ${url.split("?")[0]}`);
+        await new Promise(r => setTimeout(r, wait * 1000));
+        continue;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url.split("?")[0]}`);
       return type === "json" ? await res.json() : await res.text();
     } catch (e) {
       lastErr = e;

@@ -177,3 +177,12 @@ test("Alterra parser splits Palisades sides by mountain area and counts lifts an
   assert.throws(() => parseAlterra(feed, ["Nope"]), /none of the configured areas/);
   assert.equal(parseAlterra({ Resorts: [{ Name: "X", MountainAreas: [{ Name: "M", Lifts: [lift("A", "closed_for_season")] }] }] }, null).liftsOpen, 0);
 });
+
+test("rest-area closures and lifted closures don't close the road", () => {
+  const now = new Date("2026-11-17T12:00:00-08:00"), ep = d => String(new Date(d).getTime() / 1000);
+  const mk = (facility, lifted = "false") => ({ lcs: { location: { begin: { beginRoute: "I-80", beginLatitude: "39.33", beginLongitude: "-120.33", beginLocationName: "Donner Summit Rest Area" } },
+    closure: { facility, typeOfClosure: "Full", code1098: { isCode1098: lifted }, closureTimestamp: { closureStartEpoch: ep("2026-11-16T02:30:00-08:00"), closureEndEpoch: "", isClosureEndIndefinite: "true" } } } });
+  assert.deepEqual(parseClosures({ data: [mk("Rest Area"), mk("Vista Point")] }, now), {});
+  assert.deepEqual(parseClosures({ data: [mk("Freeway", "true")] }, now), {});
+  assert.equal(parseClosures({ data: [mk("Freeway")] }, now)["80"].status, "CLOSED");
+});
