@@ -155,10 +155,12 @@ test("chain-control parser reads status from a sibling object of the route", () 
   assert.equal(r["80"].status, "R2"); assert.equal(r["80"].where, "Kingvale"); assert.equal(r["50"].status, "R0");
 });
 
-test("empty pre-season Vail feed counts as unknown, not closed", () => {
-  const v = parseVail(`<script>FR.TerrainStatusFeed = {"Date":"x","Lifts":[],"GroomingAreas":[]};</script>`);
-  assert.equal(v.liftsOpen, null);
-  const r = run("kirkwood", { lifts: v });
+test("empty Vail feed means not open for the season", () => {
+  const v = parseVail(`<script>FR.TerrainStatusFeed = {"Date":"x","IsSuccessful":true,"Lifts":[],"GroomingAreas":[]};</script>`);
+  assert.equal(v.liftsOpen, 0); assert.equal(v.notOpenYet, true);
+  assert.equal(run("kirkwood", { lifts: v }).why, "Lifts not spinning");
+  assert.throws(() => parseVail(`<script>FR.TerrainStatusFeed = {"IsSuccessful":false,"ErrorDetails":"down","Lifts":[]};</script>`), /reported an error/);
+});
   assert.notEqual(r.why, "Lifts not spinning");
 });
 

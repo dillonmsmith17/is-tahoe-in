@@ -65,3 +65,35 @@ test("status words normalise", () => {
 test("a page with no lifts throws instead of reporting zero", () => {
   assert.throws(() => R.parseMtRose("<html></html>"), /no lifts found/);
 });
+
+/* ---- Vail (snapshots 2026-11-17: Northstar open early season, Heavenly and Kirkwood not yet) ---- */
+import { parseVail } from "../src/sources/lifts.js";
+import { evaluate } from "../src/engine.js";
+import * as F from "./fixture.js";
+const { locations } = JSON.parse(readFileSync(new URL("../config/locations.json", import.meta.url)));
+
+test("Vail: Kirkwood's empty feed means not open yet, and the tile is a NO", () => {
+  const r = parseVail(fx("kirkwood-0.html"));
+  assert.equal(r.liftsOpen, 0); assert.equal(r.liftsTotal, 0); assert.equal(r.notOpenYet, true);
+  const loc = locations.find(l => l.id === "kirkwood");
+  const v = evaluate(loc, F.wx(loc), { ...F.opts(loc), lifts: r });
+  assert.equal(v.yes, false); assert.equal(v.why, "Lifts not spinning");
+});
+
+test("Vail: Heavenly's sightseeing gondola doesn't count as open for skiing", () => {
+  const r = parseVail(fx("heavenly-0.html"));
+  assert.equal(r.liftsOpen, 0); assert.equal(r.notOpenYet, true);
+});
+
+test("Vail: Northstar early season reads 3 of 19 lifts and treats stale trail flags as unknown", () => {
+  const r = parseVail(fx("northstar-0.html"));
+  assert.equal(r.liftsTotal, 19); assert.equal(r.liftsOpen, 3);
+  assert.equal(r.terrainPct, null);
+  assert.equal(r.lifts["Martis Camp Express"], "closed");
+});
+
+test("a resort with unknown lift status can't be a YES", () => {
+  const loc = locations.find(l => l.id === "kirkwood");
+  const v = evaluate(loc, F.wx(loc), { ...F.opts(loc), lifts: null });
+  assert.equal(v.yes, false); assert.equal(v.why, "Lift status unknown");
+});

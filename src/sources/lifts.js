@@ -5,43 +5,60 @@ import { get } from "../http.js";
 import { RESORT_SOURCES } from "./resorts.js";
 
 /* ---------- Vail Resorts (Heavenly, Northstar, Kirkwood) ---------- */
-// Vail's terrain-and-lift-status pages embed a JSON object assigned to `TerrainStatusFeed`.
-// Field names have shifted over the years, so matching is deliberately loose.
-export function extractAssignedJson(html, varName) {
-  const i = html.indexOf(varName);
-  if (i < 0) return null;
-  const start = html.indexOf("{", i);
-  if (start < 0) return null;
+// Vail's terrain-and-lift-status pages embed `FR.TerrainStatusFeed = {...}` twice: once with numeric
+// statuses and once with words. Lifts sit under GroomingAreas[].Lifts (and again in a top-level Lifts list).
+// Before a resort opens, Vail lists no lifts at all; that means "not open yet", not "unknown".
+// Note: fetch these pages with our own user agent. A bare browser user agent gets Akamai's block page.
+function objectAt(html, start) {
   let depth = 0, inStr = false, esc = false;
   for (let k = start; k < html.length; k++) {
     const c = html[k];
     if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
     if (c === '"') inStr = true;
     else if (c === "{") depth++;
-    else if (c === "}" && --depth === 0) {
-      try { return JSON.parse(html.slice(start, k + 1)); } catch { return null; }
-    }
+    else if (c === "}" && --depth === 0) { try { return JSON.parse(html.slice(start, k + 1)); } catch { return null; } }
   }
   return null;
 }
+export function extractAllAssignedJson(html, varName) {
+  const out = [];
+  for (let i = html.indexOf(varName); i >= 0; i = html.indexOf(varName, i + varName.length)) {
+    const start = html.indexOf("{", i);
+    if (start < 0) break;
+    const o = objectAt(html, start);
+    if (o) out.push(o);
+  }
+  return out;
+}
+export const extractAssignedJson = (html, varName) => extractAllAssignedJson(html, varName)[0] ?? null;
 
-const isOpen = x => x?.IsOpen === true || x?.Status === 1 || /^open$/i.test(String(x?.Status ?? x?.status ?? ""));
+const VAIL_NUM = { 0: "closed", 1: "open", 2: "hold", 3: "scheduled" };
+const vailStatus = s => typeof s === "number" ? (VAIL_NUM[s] || "closed")
+  : /hold/i.test(s) ? "hold" : /sched|expect/i.test(s) ? "scheduled" : /^open/i.test(String(s ?? "")) ? "open" : "closed";
+const NOT_SKIING = /summer|top of gondola|sightseeing|scenic|cross country|nordic/i;
 
 export function parseVail(html) {
-  const feed = extractAssignedJson(html, "TerrainStatusFeed");
-  if (!feed) throw new Error("TerrainStatusFeed not found on page");
-  const lifts = feed.Lifts || feed.lifts || [];
-  if (!lifts.length) return { liftsOpen: null, liftsTotal: 0, trailsOpen: null, trailsTotal: null, terrainPct: null, groomersOnly: null, source: "Resort site (no lifts listed yet)" };
-  const trails = (feed.GroomingAreas || []).flatMap(a => a.Runs || a.Trails || []).concat(feed.Trails || feed.Runs || []);
-  const openTrails = trails.filter(isOpen);
-  const groomedFlag = openTrails.some(t => "IsGroomed" in t);
+  const feeds = extractAllAssignedJson(html, "TerrainStatusFeed");
+  if (!feeds.length) throw new Error("TerrainStatusFeed not found on page (blocked or layout changed)");
+  const feed = feeds.find(f => /"Status":"/.test(JSON.stringify(f.Lifts || []))) || feeds[feeds.length - 1];
+  if (feed.IsSuccessful === false) throw new Error(`terrain feed reported an error: ${feed.ErrorDetails || "no detail"}`);
+  const areas = (feed.GroomingAreas || []).filter(a => !NOT_SKIING.test(a.Name || ""));
+  const byId = new Map();
+  for (const l of [...areas.flatMap(a => a.Lifts || []), ...(feed.Lifts || [])]) if (!NOT_SKIING.test(l.Mountain || "")) byId.set(l.Id ?? l.Name, l);
+  const lifts = [...byId.values()];
+  if (!lifts.length) return { liftsOpen: 0, liftsTotal: 0, lifts: {}, trailsOpen: null, trailsTotal: null, terrainPct: null, groomersOnly: null, notOpenYet: true, source: "Resort site (no lifts operating; not open for the season)" };
+  const status = Object.fromEntries(lifts.map(l => [l.Name, vailStatus(l.Status)]));
+  const v = Object.values(status);
+  const liftsOpen = v.filter(x => x === "open").length;
+  const trails = areas.flatMap(a => a.Trails || a.Runs || []);
+  const openT = trails.filter(t => t.IsOpen === true);
+  // Early season Vail often runs lifts without updating trail flags; don't report 0% terrain then.
+  const trailsKnown = trails.length && !(liftsOpen > 0 && openT.length === 0);
   return {
-    liftsOpen: lifts.filter(isOpen).length,
-    liftsTotal: lifts.length,
-    trailsOpen: trails.length ? openTrails.length : null,
-    trailsTotal: trails.length || null,
-    terrainPct: trails.length ? Math.round(100 * openTrails.length / trails.length) : null,
-    groomersOnly: groomedFlag && openTrails.length > 0 ? openTrails.every(t => t.IsGroomed) : null,
+    lifts: status, liftsOpen, liftsHold: v.filter(x => x === "hold").length, liftsTotal: lifts.length,
+    trailsOpen: trailsKnown ? openT.length : null, trailsTotal: trailsKnown ? trails.length : null,
+    terrainPct: trailsKnown ? Math.round(100 * openT.length / trails.length) : null,
+    groomersOnly: trailsKnown && openT.length && openT.some(t => t.IsGroomed != null) ? openT.every(t => t.IsGroomed === true) : null,
     source: "Resort site"
   };
 }

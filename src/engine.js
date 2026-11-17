@@ -193,7 +193,7 @@ function verdict(loc, wx, di, o, live) {
     if (L.groomersOnly && surface !== "Thin coverage") { surface = "Packed groomers"; surfWhy = "Only groomed runs are open, whatever the storm totals say."; }
     const open = L.manualOpen ?? (L.liftsOpen != null ? L.liftsOpen > 0 : null);
     if (open === false) fail(live ? "Not open" : "Not open (as of today)", `Source: ${L.source || "unknown"}.`, "Lifts not spinning");
-    else if (open == null) note("Lift status unknown", "No lift data came back. The verdict uses snow and wind only.");
+    else if (open == null) fail("Lift status unknown", "Couldn't read lift status this run, so this can't be a YES. Check the resort site.", "Lift status unknown");
     else {
       const enough = (L.liftsOpen ?? 0) >= R.minLifts || (L.terrainPct ?? 0) >= R.minTerrainPct || (L.manualOpen && L.liftsOpen == null);
       const lt = L.liftsTotal ? `${L.liftsOpen} of ${L.liftsTotal} lifts` : "Open";
