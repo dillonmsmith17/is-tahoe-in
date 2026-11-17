@@ -7,7 +7,7 @@ import { fetchSnowDepth } from "../src/sources/snotel.js";
 import { fetchAvalanche } from "../src/sources/avalanche.js";
 import { parseVail, parseAlterra, fetchAlterraFeed, alterraAreas, fetchSite } from "../src/sources/lifts.js";
 import { fetchAvalancheObs } from "../src/sources/avyobs.js";
-import { fetchRoads, items, CC, LCS } from "../src/sources/roads.js";
+import { fetchRoads, items, CC, LCS, parseClosures } from "../src/sources/roads.js";
 
 const { locations } = JSON.parse(await readFile(new URL("../config/locations.json", import.meta.url), "utf8"));
 const ok = s => console.log(`  ✓ ${s}`), bad = s => console.log(`  ✕ ${s}`);
@@ -64,6 +64,16 @@ try {
     }
   }
 } catch (e) { bad(e.message); }
+
+console.log("Caltrans closures counted as CLOSED (full record)");
+for (const d of [3, 10]) {
+  try {
+    const c = parseClosures(await get(LCS(d), { retries: 0 }));
+    const keys = Object.keys(c);
+    if (!keys.length) ok(`D${d}: none`);
+    for (const k of keys) { const r = c[k].raw?.lcs || c[k].raw; console.log(`  ! D${d} route ${k}: ${JSON.stringify({ location: r.location, closure: r.closure }).slice(0, 2200)}`); }
+  } catch (e) { bad(`D${d}: ${e.message}`); }
+}
 
 console.log("Caltrans road status");
 try { const r = await fetchRoads(); const keys = Object.keys(r); ok(keys.length ? keys.map(k => `${k}: ${r[k].status}`).join(", ") : "feeds answered, no chain controls or closures right now"); } catch (e) { bad(e.message); }
